@@ -1,0 +1,40 @@
+# --- Virtual environment ---
+venv/
+.venv/
+env/
+.claude/
+# --- Your personal financial data (NEVER commit these) ---
+*.csv
+*.pdf
+transaction_database.csv
+recurring_transactions.json
+merchant_normalization.json
+split_transactions.json
+tax_deductible.json
+savings_goals.json
+income_streams.json
+loans.json
+loan_payments.json
+
+# --- Category rules (contains your custom keywords — optional to commit) ---
+# Uncomment the line below to keep category_rules.json private too
+# category_rules.json
+
+# --- Claude / editor settings ---
+.claude/
+.vscode/
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Streamlit cache ---
+.streamlit/
