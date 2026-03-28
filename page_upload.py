@@ -199,6 +199,6 @@ def render(tracker):
         source_stats.columns = [
             'Source', 'First Transaction', 'Last Transaction', 'Transactions'
         ]
-        st.dataframe(source_stats, use_container_width=True)
+        st.dataframe(source_stats, width="stretch")
     else:
         st.info("No transactions imported yet.")

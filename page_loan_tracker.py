@@ -177,7 +177,7 @@ def render(income_loan):
                             'Total Paid': '${:,.2f}',
                             'Interest Saved': '${:,.2f}',
                         }),
-                        use_container_width=True
+                        width="stretch"
                     )
 
                     fig = px.bar(
@@ -189,7 +189,7 @@ def render(income_loan):
                         text='Interest Saved'
                     )
                     fig.update_traces(texttemplate='$%{text:,.0f}', textposition='outside')
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
                     best = comp_df[comp_df['Interest Saved'] == comp_df['Interest Saved'].max()].iloc[0]
                     st.success(
@@ -253,7 +253,7 @@ def render(income_loan):
                         'Interest': '${:,.2f}',
                         'Balance After': '${:,.2f}'
                     }),
-                    use_container_width=True
+                    width="stretch"
                 )
             else:
                 st.info("No payments recorded yet!")

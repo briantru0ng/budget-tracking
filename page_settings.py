@@ -181,11 +181,11 @@ def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
                 df = pd.DataFrame(data).sort_values('Total', ascending=False)
 
                 fig = px.pie(df, values='Total', names='Stream', title=f"Total Income: ${total:,.2f}")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
                 st.dataframe(
                     df.style.format({'Total': '${:,.2f}', 'Average': '${:,.2f}'}),
-                    use_container_width=True
+                    width="stretch"
                 )
             else:
                 st.info("No income transactions found in this date range")
@@ -254,7 +254,7 @@ def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
                 if not exact_dups.empty:
                     st.warning(f"⚠️ Found {len(exact_dups)} exact duplicate transactions")
                     with st.expander("View Exact Duplicates"):
-                        st.dataframe(exact_dups[['Date', 'Description', 'Amount', 'Source']], use_container_width=True)
+                        st.dataframe(exact_dups[['Date', 'Description', 'Amount', 'Source']], width="stretch")
                 else:
                     st.success("✓ No exact duplicates found")
 
@@ -407,7 +407,7 @@ def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
                 st.warning("These transactions need categorization:")
                 st.dataframe(
                     uncategorized[['Date', 'Description', 'Amount', 'Source']].head(20),
-                    use_container_width=True
+                    width="stretch"
                 )
                 if len(uncategorized) > 20:
                     st.caption(f"Showing first 20 of {len(uncategorized)} uncategorized transactions")
@@ -466,6 +466,6 @@ def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
 
             st.dataframe(
                 budget_df.style.format({'Budget': '${:,.2f}'}),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )

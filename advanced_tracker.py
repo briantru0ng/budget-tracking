@@ -202,6 +202,7 @@ class AdvancedBudgetTracker:
     def load_transaction_db(self):
         if Path(TRANSACTION_DB).exists():
             df = pd.read_csv(TRANSACTION_DB, parse_dates=['Date'])
+            df['Split_ID'] = df['Split_ID'].astype(object)
             df = self._apply_budget_dates(df)
             return df
         return pd.DataFrame(columns=['Date', 'Description', 'Amount', 'Category', 'Source',
@@ -481,21 +482,43 @@ class AdvancedBudgetTracker:
         return alerts
     
     def split_transaction(self, transaction_id, splits):
-        """Split a transaction into multiple categories
-        
+        """Split a transaction into multiple category rows.
+
+        Removes the original row and inserts one row per split entry,
+        each carrying the correct category and amount.  A shared
+        Split_ID links the pieces for traceability.
+
         splits = [
             {'category': 'Groceries', 'amount': 100, 'tax_deductible': False},
             {'category': 'Shopping', 'amount': 50, 'tax_deductible': False}
         ]
         """
+        original = self.transaction_db.loc[transaction_id].copy()
         split_id = f"split_{transaction_id}"
+
+        # Archive the split definition
         self.split_transactions[split_id] = splits
         self.save_split_transactions()
-        
-        # Update transaction with split marker
-        self.transaction_db.loc[self.transaction_db.index == transaction_id, 'Split_ID'] = split_id
+
+        # Build replacement rows
+        new_rows = []
+        sign = -1 if original['Amount'] < 0 else 1
+        for s in splits:
+            row = original.copy()
+            row['Amount'] = sign * abs(s['amount'])
+            row['Category'] = s['category']
+            row['Tax_Deductible'] = s.get('tax_deductible', False)
+            row['Split_ID'] = split_id
+            new_rows.append(row)
+
+        # Drop original, append new rows
+        self.transaction_db = self.transaction_db.drop(index=transaction_id)
+        new_df = pd.DataFrame(new_rows)
+        self.transaction_db = pd.concat(
+            [self.transaction_db, new_df], ignore_index=True
+        )
         self.save_transaction_db()
-        
+
         return split_id
     
     def tag_tax_deductible(self, transaction_id, is_deductible=True, notes=""):

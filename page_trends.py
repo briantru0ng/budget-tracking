@@ -28,9 +28,9 @@ def render(tracker):
             color='pct_change',
             color_continuous_scale=['green', 'yellow', 'red']
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
-        st.dataframe(yoy_df, use_container_width=True)
+        st.dataframe(yoy_df, width="stretch")
     else:
         st.info("Need at least 2 years of data for YoY comparison")
 
@@ -50,7 +50,7 @@ def render(tracker):
 
     fig = px.line(savings_df, x='Month', y='Savings_Rate', title="Savings Rate Trend", markers=True)
     fig.add_hline(y=20, line_dash="dash", line_color="green", annotation_text="20% Target")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     st.divider()
 
@@ -65,4 +65,4 @@ def render(tracker):
     fig.add_trace(go.Scatter(name='Net', x=proj_df['month'], y=proj_df['projected_net'], mode='lines+markers', line=dict(color='blue', width=3)))
 
     fig.update_layout(title="6-Month Projection (Based on Recurring Transactions)", barmode='group')
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")

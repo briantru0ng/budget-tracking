@@ -68,7 +68,7 @@ def render(savings_goals):
                             marker_colors=['#00D9FF', '#E0E0E0']
                         )])
                         fig.update_layout(showlegend=False, height=200, margin=dict(l=0, r=0, t=0, b=0))
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width="stretch")
 
                     if goal['status'] != 'completed':
                         if goal.get('interest_rate', 0) > 0:
@@ -237,11 +237,11 @@ def render(savings_goals):
                     barmode='group',
                     title="Suggested vs Needed Monthly Contributions"
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
                 st.dataframe(
                     df.style.format({'Suggested': '${:,.2f}', 'Needed': '${:,.2f}'}),
-                    use_container_width=True
+                    width="stretch"
                 )
 
                 total_allocated = df['Suggested'].sum()

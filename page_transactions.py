@@ -6,6 +6,9 @@ from advanced_tracker import AdvancedBudgetTracker
 def render(tracker, income_loan):
     st.title("📝 Transactions")
 
+    if 'split_success' in st.session_state:
+        st.success(st.session_state.pop('split_success'))
+
     if tracker.transaction_db.empty:
         st.warning("No transactions yet — upload a statement first.")
         st.stop()
@@ -121,7 +124,7 @@ def render(tracker, income_loan):
             "Source": st.column_config.TextColumn("Source"),
             "Tax_Deductible": st.column_config.CheckboxColumn("Tax Ded."),
         },
-        use_container_width=True,
+        width="stretch",
         height=500,
         on_select="rerun",
         selection_mode="multi-row",
@@ -222,40 +225,81 @@ def render(tracker, income_loan):
             "Notes", placeholder="e.g. Home office, business travel", key="tax_notes"
         )
     if st.button("Tag", key="tag_tax_btn"):
-        if tax_txn_id < len(tracker.transaction_db):
-            tracker.tag_tax_deductible(int(tax_txn_id), is_deductible, tax_notes)
+        tax_idx = int(tax_txn_id)
+        if tax_idx < len(tracker.transaction_db):
+            actual_index = tracker.transaction_db.index[tax_idx]
+            tracker.tag_tax_deductible(actual_index, is_deductible, tax_notes)
             label = "deductible" if is_deductible else "not deductible"
-            st.success(f"Row {int(tax_txn_id)} marked {label}")
+            st.success(f"Row {tax_idx} marked {label}")
             st.rerun()
         else:
-            st.error(f"Row {int(tax_txn_id)} not found")
+            st.error(f"Row {tax_idx} not found")
 
     st.divider()
     st.subheader("✂️ Split Transaction")
-    st.caption("Split one transaction across multiple categories")
+    st.caption(
+        "Removes the original row and creates one row per split with the "
+        "correct category and amount."
+    )
+    st.caption("Row index from the table above (leftmost number)")
     split_txn_id = st.number_input("Row # to split", min_value=0, step=1, key="split_txn_id")
+    txn_total = 0.0
     if split_txn_id < len(tracker.transaction_db):
         txn = tracker.transaction_db.iloc[int(split_txn_id)]
+        txn_total = abs(txn['Amount'])
         st.info(
             f"**{txn['Normalized_Merchant']}** — "
-            f"${abs(txn['Amount']):.2f} on {txn['Date'].strftime('%Y-%m-%d')}"
+            f"${txn_total:.2f} on {txn['Date'].strftime('%Y-%m-%d')}"
         )
     num_splits = st.number_input(
         "Number of splits", min_value=2, max_value=5, value=2, key="num_splits"
     )
+
+    basket_names = list(tracker.baskets.keys())
     splits = []
     split_cols = st.columns(int(num_splits))
     for i, col in enumerate(split_cols):
         with col:
-            cat = st.selectbox(f"Category {i+1}", all_categories, key=f"split_cat_{i}")
+            grp = st.selectbox(
+                f"Group {i+1}", ["All"] + basket_names, key=f"split_grp_{i}"
+            )
+            if grp != "All":
+                cat_opts = sorted(tracker.baskets.get(grp, []))
+            else:
+                cat_opts = all_categories
+            cat = st.selectbox(f"Category {i+1}", cat_opts, key=f"split_cat_{i}")
             amt = st.number_input(
-                f"Amount {i+1}", min_value=0.01, value=1.0, step=0.01, key=f"split_amt_{i}"
+                f"Amount {i+1}", min_value=0.01, value=0.01, step=0.01,
+                key=f"split_amt_{i}",
             )
             splits.append({'category': cat, 'amount': amt, 'tax_deductible': False})
-    if st.button("Apply Split", key="apply_split_btn"):
-        if split_txn_id < len(tracker.transaction_db):
-            split_id = tracker.split_transaction(int(split_txn_id), splits)
-            st.success(f"Split into {len(splits)} categories (ID: {split_id})")
-            st.rerun()
+
+    # Show running total vs original
+    split_sum = sum(s['amount'] for s in splits)
+    if txn_total > 0:
+        diff = txn_total - split_sum
+        if abs(diff) < 0.01:
+            st.success(f"Split total: ${split_sum:.2f} — matches original")
         else:
-            st.error(f"Row {int(split_txn_id)} not found")
+            st.warning(
+                f"Split total: ${split_sum:.2f} — "
+                f"{'under' if diff > 0 else 'over'} by ${abs(diff):.2f}"
+            )
+
+    if st.button("Apply Split", key="apply_split_btn"):
+        idx = int(split_txn_id)
+        if idx >= len(tracker.transaction_db):
+            st.error(f"Row {idx} not found")
+        elif abs(txn_total - split_sum) >= 0.01:
+            st.error(
+                f"Split amounts (${split_sum:.2f}) must equal the "
+                f"original (${txn_total:.2f})"
+            )
+        else:
+            # Convert positional index (iloc) to actual index label (loc)
+            actual_index = tracker.transaction_db.index[idx]
+            split_id = tracker.split_transaction(actual_index, splits)
+            st.session_state['split_success'] = (
+                f"Split into {len(splits)} categories (ID: {split_id})"
+            )
+            st.rerun()

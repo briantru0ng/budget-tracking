@@ -195,7 +195,7 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
                 names=by_source.index,
                 title="Income Sources",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     # ---- Main Expenses Tab --------------------------------------------- #
     with tab_main:
@@ -236,7 +236,7 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
             if chart_data2:
                 cdf = pd.DataFrame(chart_data2)
                 fig = px.bar(cdf, x="Category", y="Amount", title="Main Expenses Breakdown")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
     # ---- Personal Expenses Tab ----------------------------------------- #
     with tab_personal:
@@ -265,7 +265,7 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
                 names=list(personal_cats.keys()),
                 title="Personal Spending Breakdown",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     # ---- Working With Costs Tab ---------------------------------------- #
     with tab_working:
@@ -303,7 +303,7 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
             },
         )
         fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         # Monthly spending trend
         st.subheader("📅 Monthly Spending Trend")
@@ -322,7 +322,7 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
             color='Category',
             title="Spending by Category Over Time",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     # ---- Expected Savings Tab ------------------------------------------ #
     with tab_savings:
