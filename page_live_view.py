@@ -8,8 +8,8 @@ from advanced_tracker import AdvancedBudgetTracker
 # Maps display label -> list of transaction categories that roll up into it
 MAIN_EXPENSE_ITEMS = {
     "Rent": ["Housing"],
-    "Electric": [],
-    "Natural Gas": [],
+    "Electric": ["Electric"],
+    "Natural Gas": ["Natural Gas"],
     "Internet": ["Internet"],
     "Water": ["Water"],
     "Groceries": ["Groceries"],
@@ -126,7 +126,23 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
         st.metric("💸 Expenses", f"${all_expenses:,.2f}")
     with col3:
         net = income_total - all_expenses
-        st.metric("💰 Net", f"${net:,.2f}", delta=f"${net:,.2f}")
+        # Compare to previous month's net (Jan wraps to Dec of prior year)
+        prev_net = None
+        if mode == 'month':
+            prev_period = value - 1  # pd.Period arithmetic handles Jan→Dec
+            prev_data = df_all[df_all['_period'] == prev_period]
+            if not prev_data.empty:
+                prev_income = prev_data.loc[
+                    prev_data['Category'].isin(_INCOME_CATS) & (prev_data['Amount'] > 0),
+                    'Amount'
+                ].sum()
+                prev_expenses = abs(prev_data[prev_data['Amount'] < 0]['Amount'].sum())
+                prev_net = prev_income - prev_expenses
+        if prev_net is not None:
+            delta_val = net - prev_net
+            st.metric("💰 Net", f"${net:,.2f}", delta=f"${delta_val:,.2f}")
+        else:
+            st.metric("💰 Net", f"${net:,.2f}")
     with col4:
         # Savings rate = total in Savings group categories / income
         _SAVINGS_CATS = set(tracker.baskets.get('Savings', []))
@@ -195,7 +211,13 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
                 names=by_source.index,
                 title="Income Sources",
             )
-            st.plotly_chart(fig, width="stretch")
+            fig.update_traces(
+                textinfo="label+value",
+                texttemplate="%{label}<br>$%{value:,.2f}",
+                hovertemplate="%{label}: $%{value:,.2f}<extra></extra>",
+            )
+            fig.update_layout(height=600)
+            st.plotly_chart(fig, use_container_width=True)
 
     # ---- Main Expenses Tab --------------------------------------------- #
     with tab_main:
@@ -223,20 +245,25 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
         main_df['Amount'] = main_df['Amount'].map(lambda x: f"$ {x:,.2f}" if x > 0 else "$ -")
         st.table(main_df.set_index("Category"))
 
-        # Bar chart of non-zero items
-        chart_rows = [r for r in rows[:-1] if not isinstance(r['Amount'], str)]
-        if chart_rows:
-            chart_data = pd.DataFrame([r for r in rows[:-1]])
-            # Re-extract numeric amounts for chart
-            chart_data2 = []
-            for label, cats in MAIN_EXPENSE_ITEMS.items():
-                total = sum(expense_by_cat.get(c, 0) for c in cats)
-                if total > 0:
-                    chart_data2.append({"Category": label, "Amount": total})
-            if chart_data2:
-                cdf = pd.DataFrame(chart_data2)
-                fig = px.bar(cdf, x="Category", y="Amount", title="Main Expenses Breakdown")
-                st.plotly_chart(fig, width="stretch")
+        # Pie chart of non-zero items
+        chart_data = []
+        for label, cats in MAIN_EXPENSE_ITEMS.items():
+            total = sum(expense_by_cat.get(c, 0) for c in cats)
+            if total > 0:
+                chart_data.append({"Category": label, "Amount": total})
+        if chart_data:
+            cdf = pd.DataFrame(chart_data)
+            fig = px.pie(
+                cdf, values="Amount", names="Category",
+                title="Main Expenses Breakdown",
+            )
+            fig.update_traces(
+                textinfo="label+value",
+                texttemplate="%{label}<br>$%{value:,.2f}",
+                hovertemplate="%{label}: $%{value:,.2f}<extra></extra>",
+            )
+            fig.update_layout(height=600)
+            st.plotly_chart(fig, use_container_width=True)
 
     # ---- Personal Expenses Tab ----------------------------------------- #
     with tab_personal:
@@ -265,7 +292,13 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
                 names=list(personal_cats.keys()),
                 title="Personal Spending Breakdown",
             )
-            st.plotly_chart(fig, width="stretch")
+            fig.update_traces(
+                textinfo="label+value",
+                texttemplate="%{label}<br>$%{value:,.2f}",
+                hovertemplate="%{label}: $%{value:,.2f}<extra></extra>",
+            )
+            fig.update_layout(height=600)
+            st.plotly_chart(fig, use_container_width=True)
 
     # ---- Working With Costs Tab ---------------------------------------- #
     with tab_working:

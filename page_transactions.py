@@ -92,8 +92,6 @@ def render(tracker, income_loan):
     st.divider()
 
     # ---- Transaction table (read-only, selectable) ---------------------- #
-    all_categories = sorted(tracker.category_rules.keys())
-
     if df.empty:
         st.info("No transactions match the current filters.")
         st.stop()
@@ -255,51 +253,66 @@ def render(tracker, income_loan):
         "Number of splits", min_value=2, max_value=5, value=2, key="num_splits"
     )
 
-    basket_names = list(tracker.baskets.keys())
-    splits = []
-    split_cols = st.columns(int(num_splits))
-    for i, col in enumerate(split_cols):
-        with col:
-            grp = st.selectbox(
-                f"Group {i+1}", ["All"] + basket_names, key=f"split_grp_{i}"
-            )
-            if grp != "All":
-                cat_opts = sorted(tracker.baskets.get(grp, []))
-            else:
-                cat_opts = all_categories
-            cat = st.selectbox(f"Category {i+1}", cat_opts, key=f"split_cat_{i}")
-            amt = st.number_input(
-                f"Amount {i+1}", min_value=0.01, value=0.01, step=0.01,
-                key=f"split_amt_{i}",
-            )
-            splits.append({'category': cat, 'amount': amt, 'tax_deductible': False})
+    n = int(num_splits)
 
-    # Show running total vs original
-    split_sum = sum(s['amount'] for s in splits)
+    # Build "Group > Category" combined list so everything works inside a form
+    cat_options = []
+    for grp, cats in tracker.baskets.items():
+        for c in sorted(cats):
+            cat_options.append(f"{grp} > {c}")
+    cat_options.sort()
+
+    # Compute defaults so they always sum exactly to the total
+    even_amt = round(txn_total / n, 2) if txn_total > 0 and n > 0 else 0.01
+
+    with st.form("split_form"):
+        splits = []
+        split_cols = st.columns(n)
+        for i, col in enumerate(split_cols):
+            with col:
+                sel = st.selectbox(
+                    f"Category {i+1}", cat_options, key=f"split_cat_{i}"
+                )
+                cat = sel.split(" > ", 1)[1]
+                if i < n - 1:
+                    default_amt = even_amt
+                else:
+                    default_amt = round(txn_total - even_amt * (n - 1), 2)
+                amt = st.number_input(
+                    f"Amount {i+1}", min_value=0.01,
+                    value=max(default_amt, 0.01), step=0.01,
+                    key=f"split_amt_{i}",
+                )
+                splits.append({'category': cat, 'amount': amt, 'tax_deductible': False})
+
+        # Show running total vs original
+        split_sum = round(sum(s['amount'] for s in splits), 2)
+        submitted = st.form_submit_button("Apply Split", type="primary")
+
     if txn_total > 0:
-        diff = txn_total - split_sum
+        diff = round(txn_total - split_sum, 2)
         if abs(diff) < 0.01:
             st.success(f"Split total: ${split_sum:.2f} — matches original")
         else:
             st.warning(
-                f"Split total: ${split_sum:.2f} — "
+                f"Split total: ${split_sum:.2f} vs original ${txn_total:.2f} — "
                 f"{'under' if diff > 0 else 'over'} by ${abs(diff):.2f}"
             )
 
-    if st.button("Apply Split", key="apply_split_btn"):
+    if submitted:
         idx = int(split_txn_id)
         if idx >= len(tracker.transaction_db):
             st.error(f"Row {idx} not found")
-        elif abs(txn_total - split_sum) >= 0.01:
+        elif abs(round(txn_total - split_sum, 2)) >= 0.01:
             st.error(
                 f"Split amounts (${split_sum:.2f}) must equal the "
-                f"original (${txn_total:.2f})"
+                f"original (${txn_total:.2f}). Adjust amounts to match."
             )
         else:
-            # Convert positional index (iloc) to actual index label (loc)
             actual_index = tracker.transaction_db.index[idx]
             split_id = tracker.split_transaction(actual_index, splits)
             st.session_state['split_success'] = (
                 f"Split into {len(splits)} categories (ID: {split_id})"
             )
+            st.session_state.pop("txn_table", None)
             st.rerun()

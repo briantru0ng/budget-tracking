@@ -42,6 +42,11 @@
     "Roth IRA",
     "HYSA",
     "E-Fund",
-    "General Investing"
+    "General Investing",
+    "Student Loans"
+  ],
+  "Loans": [
+    "Auto Loan",
+    "Student Loans"
   ]
 }
