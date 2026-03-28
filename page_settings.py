@@ -7,16 +7,78 @@ from datetime import datetime, timedelta
 def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
     st.title("⚙️ Settings & Tools")
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🗂️ Baskets",
         "💰 Apply Interest",
         "🔍 Income Breakdown",
         "🧹 Duplicates",
         "🏷️ Categorization",
-        "💾 Budgets"
+        "💾 Budgets",
     ])
 
-    # TAB 1: Apply Interest
+    # TAB 1: Baskets
     with tab1:
+        st.subheader("🗂️ Category Baskets")
+        st.caption(
+            "Baskets are top-level groupings. Sub-categories sit inside baskets "
+            "and are what transactions actually get tagged with."
+        )
+
+        for basket_name, subs in tracker.baskets.items():
+            with st.expander(f"**{basket_name}** ({len(subs)} sub-categories)"):
+                if subs:
+                    for sub in subs:
+                        c1, c2 = st.columns([4, 1])
+                        with c1:
+                            st.write(f"  • {sub}")
+                        with c2:
+                            if st.button(
+                                "✕", key=f"del_sub_{basket_name}_{sub}"
+                            ):
+                                tracker.baskets[basket_name].remove(sub)
+                                tracker.save_baskets()
+                                st.rerun()
+                else:
+                    st.write("*(empty — add sub-categories below)*")
+
+                # Add sub-category inline
+                ac1, ac2 = st.columns([3, 1])
+                with ac1:
+                    new_s = st.text_input(
+                        "New sub-category",
+                        key=f"add_sub_{basket_name}",
+                        placeholder="e.g. Coffee, Subscriptions",
+                        label_visibility="collapsed",
+                    )
+                with ac2:
+                    if st.button("Add", key=f"add_sub_btn_{basket_name}"):
+                        if new_s:
+                            tracker.add_subcategory(basket_name, new_s)
+                            st.success(f"✓ Added '{new_s}'")
+                            st.rerun()
+
+        st.divider()
+        st.subheader("Create a new basket")
+        bc1, bc2 = st.columns([3, 1])
+        with bc1:
+            new_basket = st.text_input(
+                "Basket name",
+                placeholder="e.g. Subscriptions, Pets, Education",
+                key="new_basket_name",
+            )
+        with bc2:
+            st.write("")
+            st.write("")
+            if st.button("Create", type="primary", key="create_basket_btn"):
+                if new_basket:
+                    if tracker.add_basket(new_basket):
+                        st.success(f"✓ Created basket '{new_basket}'")
+                        st.rerun()
+                    else:
+                        st.warning(f"'{new_basket}' already exists")
+
+    # TAB 2: Apply Interest
+    with tab2:
         st.subheader("💰 Apply Interest to Savings Goals")
         st.write("Manually compound interest on your savings goals (use for monthly interest payments)")
 
@@ -85,8 +147,8 @@ def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
                 st.balloons()
                 st.rerun()
 
-    # TAB 2: Income Breakdown
-    with tab2:
+    # TAB 3: Income Breakdown
+    with tab3:
         st.subheader("🔍 Income Stream Analysis")
 
         col1, col2 = st.columns(2)
@@ -150,8 +212,8 @@ def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
             else:
                 st.error("Please enter a keyword")
 
-    # TAB 3: Duplicates
-    with tab3:
+    # TAB 4: Duplicates
+    with tab4:
         st.subheader("🧹 Duplicate Detection & Cleanup")
 
         if tracker.transaction_db.empty:
@@ -283,8 +345,8 @@ def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
             else:
                 st.info("No duplicates to remove")
 
-    # TAB 4: Categorization
-    with tab4:
+    # TAB 5: Categorization
+    with tab5:
         st.subheader("🏷️ Categorization Management")
 
         st.write("**Quick Teach**")
@@ -352,16 +414,18 @@ def render(tracker, income_loan, savings_goals, load_budgets, save_budgets):
             else:
                 st.success("✓ All transactions categorized!")
 
-    # TAB 5: Budgets
-    with tab5:
+    # TAB 6: Budgets
+    with tab6:
         st.subheader("💾 Budget Targets")
         st.write("Set monthly budget limits for each spending category")
 
         budgets = load_budgets()
 
         if not tracker.transaction_db.empty:
-            categories = [cat for cat in tracker.transaction_db['Category'].unique()
-                         if cat not in ['Income', 'Other Income', 'UNCATEGORIZED']]
+            categories = [
+                cat for cat in tracker.transaction_db['Category'].unique()
+                if cat not in ['Income', 'Other Income', 'UNCATEGORIZED']
+            ]
 
             st.write("Enter your monthly budget for each category:")
 

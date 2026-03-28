@@ -18,7 +18,8 @@
     "food lion",
     "giant",
     "shoprite",
-    "stop shop"
+    "stop shop",
+    "bjs wholesale"
   ],
   "Dining": [
     "restaurant",
@@ -33,7 +34,11 @@
     "doordash",
     "ubereats",
     "grubhub",
-    "seamless"
+    "seamless",
+    "tst*sweet leaf - resto",
+    "sq *antojitos de tu pa",
+    "blue ridge seafood",
+    "lantern house kitchen"
   ],
   "Transportation": [
     "uber",
@@ -123,6 +128,28 @@
     "salary",
     "direct dep",
     "payment received",
-    "refund"
-  ]
+    "refund",
+    "zel from quyen t ciolorito",
+    "zel from connor carnahan",
+    "interest payment"
+  ],
+  "Gaming": [
+    "debit card purchase xxxxxxxxxxxxxxxx2151 wl *steam purchase"
+  ],
+  "Internet": [],
+  "Water": [],
+  "Gas": [],
+  "Monthly Subscriptions": [],
+  "Yearly Subscriptions": [],
+  "Electronics": [
+    "micro center fairfax"
+  ],
+  "Other Income": [
+    "irs treas"
+  ],
+  "Roth IRA, HYSA, E-Fund, General Savings, General Investing": [],
+  "Roth IRA": [],
+  "HYSA": [],
+  "E-Fund": [],
+  "General Investing": []
 }

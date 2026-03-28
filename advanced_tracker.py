@@ -22,8 +22,32 @@ TRANSACTION_DB = 'transaction_database.csv'
 CATEGORY_RULES = 'category_rules.json'
 MERCHANT_MAP = 'merchant_normalization.json'
 RECURRING_DB = 'recurring_transactions.json'
+
+# Categories excluded from all spending/income calculations
+EXCLUDED_CATEGORIES = {'SKIP'}
+
+# Income that arrives at the end of the month but should count for the NEXT month's budget.
+# Each entry: (keyword in description, day-of-month threshold — on or after this day, shift forward)
+NEXT_MONTH_INCOME = [
+    ('PENN STATE UNIV', 25),
+]
 SPLIT_TRANSACTIONS = 'split_transactions.json'
 TAX_CATEGORIES = 'tax_deductible.json'
+BASKETS_FILE = 'category_baskets.json'
+
+# Default baskets — top-level groupings of sub-categories
+DEFAULT_BASKETS = {
+    'Food & Drink': ['Groceries', 'Dining', 'Coffee'],
+    'Housing & Utilities': ['Housing', 'Utilities'],
+    'Transportation': ['Transportation'],
+    'Shopping': ['Shopping', 'Electronics'],
+    'Entertainment': ['Entertainment'],
+    'Health & Insurance': ['Healthcare', 'Insurance'],
+    'Services': ['Services'],
+    'Income': ['Income', 'Other Income'],
+    'Transfers': ['Transfers'],
+    'Cash': ['Cash Withdrawals'],
+}
 
 # Default categories
 DEFAULT_CATEGORIES = {
@@ -76,6 +100,7 @@ class AdvancedBudgetTracker:
         self.recurring_db = self.load_recurring_db()
         self.split_transactions = self.load_split_transactions()
         self.tax_categories = self.load_tax_categories()
+        self.baskets = self.load_baskets()
         
     def load_category_rules(self):
         if Path(CATEGORY_RULES).exists():
@@ -86,7 +111,54 @@ class AdvancedBudgetTracker:
     def save_category_rules(self):
         with open(CATEGORY_RULES, 'w') as f:
             json.dump(self.category_rules, f, indent=2)
-    
+
+    # ---- Baskets (hierarchical category groupings) ---- #
+
+    def load_baskets(self):
+        if Path(BASKETS_FILE).exists():
+            with open(BASKETS_FILE, 'r') as f:
+                return json.load(f)
+        return {k: list(v) for k, v in DEFAULT_BASKETS.items()}
+
+    def save_baskets(self):
+        with open(BASKETS_FILE, 'w') as f:
+            json.dump(self.baskets, f, indent=2)
+
+    def get_basket_for_category(self, category):
+        """Return the parent basket name for a sub-category, or None."""
+        for basket, subs in self.baskets.items():
+            if category in subs:
+                return basket
+        return None
+
+    def get_all_subcategories(self):
+        """Return a flat list of every sub-category across all baskets."""
+        result = []
+        for subs in self.baskets.values():
+            result.extend(subs)
+        return result
+
+    def add_basket(self, name):
+        """Create a new top-level basket."""
+        if name not in self.baskets:
+            self.baskets[name] = []
+            self.save_baskets()
+            return True
+        return False
+
+    def add_subcategory(self, basket_name, sub_name):
+        """Add a sub-category to an existing basket.
+        Also ensures category_rules has an entry for it."""
+        if basket_name not in self.baskets:
+            return False
+        if sub_name not in self.baskets[basket_name]:
+            self.baskets[basket_name].append(sub_name)
+            self.save_baskets()
+        if sub_name not in self.category_rules:
+            self.category_rules[sub_name] = []
+            self.save_category_rules()
+        return True
+
     def load_merchant_map(self):
         if Path(MERCHANT_MAP).exists():
             with open(MERCHANT_MAP, 'r') as f:
@@ -130,9 +202,27 @@ class AdvancedBudgetTracker:
     def load_transaction_db(self):
         if Path(TRANSACTION_DB).exists():
             df = pd.read_csv(TRANSACTION_DB, parse_dates=['Date'])
+            df = self._apply_budget_dates(df)
             return df
-        return pd.DataFrame(columns=['Date', 'Description', 'Amount', 'Category', 'Source', 
-                                     'Normalized_Merchant', 'Tax_Deductible', 'Split_ID'])
+        return pd.DataFrame(columns=['Date', 'Description', 'Amount', 'Category', 'Source',
+                                     'Normalized_Merchant', 'Tax_Deductible', 'Split_ID',
+                                     'Budget_Date'])
+
+    @staticmethod
+    def _apply_budget_dates(df):
+        """Add Budget_Date column — shifts end-of-month income to next month."""
+        from dateutil.relativedelta import relativedelta
+        df['Budget_Date'] = df['Date']
+        for keyword, day_threshold in NEXT_MONTH_INCOME:
+            mask = (
+                df['Description'].str.contains(keyword, case=False, na=False)
+                & (df['Amount'] > 0)
+                & (df['Date'].dt.day >= day_threshold)
+            )
+            df.loc[mask, 'Budget_Date'] = df.loc[mask, 'Date'].apply(
+                lambda d: (d + relativedelta(months=1)).replace(day=1)
+            )
+        return df
     
     def save_transaction_db(self):
         self.transaction_db.to_csv(TRANSACTION_DB, index=False)
@@ -263,10 +353,11 @@ class AdvancedBudgetTracker:
             return None
         
         df = self.transaction_db.copy()
-        
+        df = df[~df['Category'].isin(EXCLUDED_CATEGORIES)]
+
         if month:
-            df = df[df['Date'].dt.to_period('M') == pd.Period(month)]
-        
+            df = df[df['Budget_Date'].dt.to_period('M') == pd.Period(month)]
+
         income = df[df['Amount'] > 0]['Amount'].sum()
         expenses = abs(df[df['Amount'] < 0]['Amount'].sum())
         
@@ -358,7 +449,10 @@ class AdvancedBudgetTracker:
             current_date = datetime.now()
         
         current_month = pd.Period(current_date, freq='M')
-        df = self.transaction_db[self.transaction_db['Date'].dt.to_period('M') == current_month]
+        df = self.transaction_db[
+            (self.transaction_db['Budget_Date'].dt.to_period('M') == current_month)
+            & (~self.transaction_db['Category'].isin(EXCLUDED_CATEGORIES))
+        ]
         
         days_in_month = current_month.days_in_month
         day_of_month = current_date.day

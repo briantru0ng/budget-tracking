@@ -1,0 +1,46 @@
+{
+  "Food & Drink": [
+    "Groceries",
+    "Dining"
+  ],
+  "Housing & Utilities": [
+    "Housing",
+    "Internet",
+    "Water"
+  ],
+  "Transportation": [
+    "Transportation",
+    "Gas"
+  ],
+  "Shopping": [
+    "Shopping",
+    "Electronics"
+  ],
+  "Entertainment": [
+    "Entertainment",
+    "Gaming"
+  ],
+  "Health & Insurance": [
+    "Healthcare",
+    "Insurance"
+  ],
+  "Services": [
+    "Services",
+    "Monthly Subscriptions",
+    "Yearly Subscriptions"
+  ],
+  "Income": [
+    "Income",
+    "Other Income"
+  ],
+  "Transfers": [],
+  "Cash": [
+    "Cash Withdrawals"
+  ],
+  "Savings": [
+    "Roth IRA",
+    "HYSA",
+    "E-Fund",
+    "General Investing"
+  ]
+}

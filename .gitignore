@@ -6,6 +6,8 @@ env/
 # --- Your personal financial data (NEVER commit these) ---
 *.csv
 *.pdf
+statements/
+completed-statements/
 transaction_database.csv
 recurring_transactions.json
 merchant_normalization.json

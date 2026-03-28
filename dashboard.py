@@ -12,6 +12,7 @@ from income_loan_tracker import IncomeAndLoanTracker
 from savings_goals import SavingsGoalsTracker
 
 import page_live_view
+import page_sort
 import page_savings_goals
 import page_upload
 import page_loan_tracker
@@ -67,6 +68,7 @@ page = st.sidebar.radio(
     "Navigate",
     [
         "📊 Live View",
+        "🗂️ Sort Transactions",
         "💰 Savings Goals",
         "📤 Upload Documents",
         "💳 Loan Tracker",
@@ -79,7 +81,10 @@ page = st.sidebar.radio(
 
 # Route to page modules
 if page == "📊 Live View":
-    page_live_view.render(tracker, load_budgets)
+    page_live_view.render(tracker, load_budgets, savings_goals, income_loan)
+
+elif page == "🗂️ Sort Transactions":
+    page_sort.render(tracker)
 
 elif page == "💰 Savings Goals":
     page_savings_goals.render(savings_goals)
