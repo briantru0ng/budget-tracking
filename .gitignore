@@ -6,6 +6,7 @@ env/
 # --- Your personal financial data (NEVER commit these) ---
 *.csv
 *.pdf
+*.json
 statements/
 completed-statements/
 transaction_database.csv
