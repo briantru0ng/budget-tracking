@@ -336,26 +336,7 @@ def render(tracker, load_budgets, savings_tracker=None, income_loan=None):
             },
         )
         fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, width="stretch")
 
-        # Monthly spending trend
-        st.subheader("📅 Monthly Spending Trend")
-        df = tracker.transaction_db[tracker.transaction_db['Category'] != 'SKIP'].copy()
-        if 'Budget_Date' not in df.columns:
-            df['Budget_Date'] = pd.to_datetime(df['Date'])
-        df['Month'] = df['Budget_Date'].dt.to_period('M').astype(str)
-        monthly = df.groupby(['Month', 'Category'])['Amount'].sum().reset_index()
-        monthly_expenses = monthly[monthly['Amount'] < 0].copy()
-        monthly_expenses['Amount'] = monthly_expenses['Amount'].abs()
-
-        fig = px.line(
-            monthly_expenses,
-            x='Month',
-            y='Amount',
-            color='Category',
-            title="Spending by Category Over Time",
-        )
-        st.plotly_chart(fig, width="stretch")
 
     # ---- Expected Savings Tab ------------------------------------------ #
     with tab_savings:

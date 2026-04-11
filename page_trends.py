@@ -215,26 +215,38 @@ def render(tracker):
             daily['YearMonth'] = pd.to_datetime(daily['Day']).dt.to_period('M')
             daily['Cumulative'] = daily.groupby('YearMonth')['Amount'].cumsum()
 
-            # Build a continuous series: for each month, carry the cumulative,
-            # then reset to 0 on the 1st of the next month
-            all_x, all_y = [], []
-            for _, row in daily.iterrows():
-                day_str = str(row['Day'])
-                # If new month and we have prior data, insert a reset point
-                if all_x:
-                    prev_period = pd.Period(all_x[-1], freq='D').to_timestamp().to_period('M')
-                    curr_period = row['YearMonth']
-                    if curr_period > prev_period:
-                        # Reset: drop to 0 at the 1st of this new month
-                        reset_date = curr_period.to_timestamp().date().isoformat()
-                        all_x.append(reset_date)
-                        all_y.append(0)
-                all_x.append(day_str)
-                all_y.append(row['Cumulative'])
-
             # Gather monthly totals for prediction
-            monthly = bdata.groupby('YearMonth')['Amount'].sum()
+            monthly = bdata.groupby(bdata['Budget_Date'].dt.to_period('M'))['Amount'].sum()
             cutoff = _basket_cutoff.get(basket, now_period)
+
+            # Build a continuous series: for each month, cumulative resets to 0.
+            # For months with no data, draw a flat line at 0.
+            # Extend the last data point in each month to the end of that month.
+            all_x, all_y = [], []
+
+            for m in all_range_months:
+                if m > cutoff:
+                    break  # projections handled separately
+                month_start = m.to_timestamp().date().isoformat()
+                month_end = (m.to_timestamp() + pd.offsets.MonthEnd(0)).date().isoformat()
+                month_daily = daily[daily['YearMonth'] == m]
+
+                # Reset to 0 at the start of each month
+                all_x.append(month_start)
+                all_y.append(0)
+
+                if month_daily.empty:
+                    # No transactions — flat line at 0 through end of month
+                    all_x.append(month_end)
+                    all_y.append(0)
+                else:
+                    for _, row in month_daily.iterrows():
+                        all_x.append(str(row['Day']))
+                        all_y.append(row['Cumulative'])
+                    # Extend last value to end of month
+                    if all_x[-1] != month_end:
+                        all_x.append(month_end)
+                        all_y.append(all_y[-1])
             past_actual = [monthly.get(m, 0) for m in all_range_months
                            if m <= cutoff and monthly.get(m, 0) > 0]
 
@@ -269,6 +281,7 @@ def render(tracker):
                     name=basket,
                     line=dict(color=color, width=2),
                     legendgroup=basket,
+                    hovertemplate=basket + " : %{y:,.2f}<extra></extra>",
                 ))
 
             # Projected line (dashed, future only)
@@ -281,6 +294,7 @@ def render(tracker):
                     marker=dict(size=6),
                     legendgroup=basket,
                     showlegend=False,
+                    hovertemplate=basket + " (proj) : %{y:,.2f}<extra></extra>",
                 ))
 
         # Month boundary tick marks

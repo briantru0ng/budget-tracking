@@ -121,10 +121,10 @@ class IncomeAndLoanTracker:
         
         return breakdown
     
-    def add_loan(self, name, principal, interest_rate, monthly_payment, 
-                 start_date, loan_type='personal', min_payment=None):
+    def add_loan(self, name, principal, interest_rate, monthly_payment,
+                 start_date, loan_type='personal', min_payment=None, **kwargs):
         """Add a loan to track
-        
+
         Args:
             name: Loan name (e.g., "Student Loan", "Car Loan")
             principal: Original loan amount
@@ -133,13 +133,14 @@ class IncomeAndLoanTracker:
             start_date: When loan started (YYYY-MM-DD)
             loan_type: Type of loan (personal, student, auto, mortgage, credit_card)
             min_payment: Minimum payment required (optional)
+            **kwargs: Additional detail fields (see DETAIL_FIELDS below)
         """
         loan_id = name.lower().replace(' ', '_')
-        
+
         self.loans[loan_id] = {
             'name': name,
             'principal': principal,
-            'current_balance': principal,
+            'current_balance': kwargs.pop('current_balance', principal),
             'interest_rate': interest_rate,
             'monthly_payment': monthly_payment,
             'min_payment': min_payment or monthly_payment,
@@ -147,12 +148,34 @@ class IncomeAndLoanTracker:
             'loan_type': loan_type,
             'total_paid': 0,
             'total_interest_paid': 0,
-            'payments': []
+            'payments': [],
+            # Detail fields (optional, populated from kwargs)
+            'status': kwargs.get('status', 'Active'),
+            'repayment_plan': kwargs.get('repayment_plan', ''),
+            'repayment_plan_end_date': kwargs.get('repayment_plan_end_date', ''),
+            'repayment_start_date': kwargs.get('repayment_start_date', start_date),
+            'estimated_payoff_date': kwargs.get('estimated_payoff_date', ''),
+            'unpaid_principal': kwargs.get('unpaid_principal', principal),
+            'unpaid_interest': kwargs.get('unpaid_interest', 0),
+            'interest_type': kwargs.get('interest_type', 'Fixed'),
+            'disbursement_date': kwargs.get('disbursement_date', ''),
+            'school': kwargs.get('school', ''),
+            'current_owner': kwargs.get('current_owner', ''),
+            'guarantor': kwargs.get('guarantor', ''),
+            'borrower_benefits': kwargs.get('borrower_benefits', ''),
         }
-        
+
         self.save_loans()
-        print(f"✓ Added loan: {name}")
+        print(f"Added loan: {name}")
         return loan_id
+
+    def update_loan(self, loan_id, **kwargs):
+        """Update any fields on an existing loan."""
+        if loan_id not in self.loans:
+            return False
+        self.loans[loan_id].update(kwargs)
+        self.save_loans()
+        return True
     
     def record_payment(self, loan_id, amount, date, extra_principal=0):
         """Record a payment to a loan"""
@@ -185,7 +208,7 @@ class IncomeAndLoanTracker:
         loan['payments'].append(payment)
         
         self.save_loans()
-        print(f"✓ Recorded payment: ${amount:.2f} to {loan['name']}")
+        print(f"Recorded payment: ${amount:.2f} to {loan['name']}")
     
     def auto_detect_loan_payments(self, loan_id, keywords):
         """Auto-detect loan payments from transaction history"""

@@ -30,8 +30,9 @@ class SavingsGoalsTracker:
         with open(SAVINGS_GOALS, 'w') as f:
             json.dump(self.goals, f, indent=2)
     
-    def add_goal(self, name, target_amount, target_date, category='general', 
-                 current_amount=0, priority='medium', notes='', interest_rate=0.0):
+    def add_goal(self, name, target_amount, target_date, category='general',
+                 current_amount=0, priority='medium', notes='', interest_rate=0.0,
+                 emoji='💰'):
         """
         Add a new savings goal
         
@@ -78,6 +79,7 @@ class SavingsGoalsTracker:
             'priority': priority,
             'notes': notes,
             'interest_rate': interest_rate,
+            'emoji': emoji,
             'created_date': datetime.now().strftime('%Y-%m-%d'),
             'monthly_contribution_needed': monthly_needed,
             'contributions': [],
@@ -104,8 +106,8 @@ class SavingsGoalsTracker:
         
         # Update fields
         for key, value in kwargs.items():
-            if key in ['name', 'target_amount', 'current_amount', 'target_date', 
-                      'category', 'priority', 'notes']:
+            if key in ['name', 'target_amount', 'current_amount', 'target_date',
+                      'category', 'priority', 'notes', 'emoji']:
                 self.goals[goal_id][key] = value
         
         # Recalculate if target_amount or target_date changed
@@ -323,6 +325,7 @@ class SavingsGoalsTracker:
             'interest_rate': interest_rate,
             'category': goal['category'],
             'priority': goal['priority'],
+            'emoji': goal.get('emoji', '💰'),
             'status': self._get_status(goal)
         }
         

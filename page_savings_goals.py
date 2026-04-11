@@ -4,8 +4,214 @@ import plotly.express as px
 import pandas as pd
 from datetime import datetime, timedelta
 
+# Emoji palette organized by category (Teams-style)
+# Flags are stored as ("emoji", "label") tuples so we can render them via Twemoji
+# on Windows (which doesn't display flag emoji natively).
+# Regular emoji categories are plain string lists.
+
+_FLAG_ASIA = [
+    ("🇻🇳", "VN"), ("🇯🇵", "JP"), ("🇰🇷", "KR"), ("🇨🇳", "CN"),
+    ("🇹🇼", "TW"), ("🇹🇭", "TH"), ("🇵🇭", "PH"), ("🇮🇩", "ID"),
+    ("🇲🇾", "MY"), ("🇸🇬", "SG"), ("🇮🇳", "IN"), ("🇵🇰", "PK"),
+    ("🇧🇩", "BD"), ("🇱🇰", "LK"), ("🇲🇲", "MM"), ("🇰🇭", "KH"),
+    ("🇱🇦", "LA"), ("🇲🇳", "MN"), ("🇳🇵", "NP"), ("🇭🇰", "HK"),
+]
+
+_FLAG_EUROPE = [
+    ("🇨🇿", "CZ"), ("🇨🇭", "CH"), ("🇬🇧", "GB"), ("🇫🇷", "FR"),
+    ("🇩🇪", "DE"), ("🇮🇹", "IT"), ("🇪🇸", "ES"), ("🇵🇹", "PT"),
+    ("🇳🇱", "NL"), ("🇧🇪", "BE"), ("🇦🇹", "AT"), ("🇵🇱", "PL"),
+    ("🇸🇪", "SE"), ("🇳🇴", "NO"), ("🇩🇰", "DK"), ("🇫🇮", "FI"),
+    ("🇮🇪", "IE"), ("🇬🇷", "GR"), ("🇭🇺", "HU"), ("🇷🇴", "RO"),
+    ("🇭🇷", "HR"), ("🇷🇸", "RS"), ("🇧🇬", "BG"), ("🇸🇰", "SK"),
+    ("🇸🇮", "SI"), ("🇺🇦", "UA"), ("🇱🇹", "LT"), ("🇱🇻", "LV"),
+    ("🇪🇪", "EE"), ("🇮🇸", "IS"),
+]
+
+_FLAG_AMERICAS = [
+    ("🇺🇸", "US"), ("🇨🇦", "CA"), ("🇲🇽", "MX"), ("🇧🇷", "BR"),
+    ("🇦🇷", "AR"), ("🇨🇴", "CO"), ("🇨🇱", "CL"), ("🇵🇪", "PE"),
+    ("🇨🇺", "CU"), ("🇯🇲", "JM"), ("🇵🇷", "PR"), ("🇨🇷", "CR"),
+    ("🇵🇦", "PA"), ("🇪🇨", "EC"), ("🇧🇴", "BO"), ("🇺🇾", "UY"),
+    ("🇵🇾", "PY"), ("🇻🇪", "VE"), ("🇬🇹", "GT"), ("🇩🇴", "DO"),
+]
+
+_FLAG_OTHER = [
+    ("🇦🇺", "AU"), ("🇳🇿", "NZ"), ("🇿🇦", "ZA"), ("🇪🇬", "EG"),
+    ("🇳🇬", "NG"), ("🇰🇪", "KE"), ("🇲🇦", "MA"), ("🇬🇭", "GH"),
+    ("🇪🇹", "ET"), ("🇹🇿", "TZ"), ("🇸🇦", "SA"), ("🇦🇪", "AE"),
+    ("🇮🇱", "IL"), ("🇹🇷", "TR"), ("🇶🇦", "QA"), ("🇯🇴", "JO"),
+    ("🇱🇧", "LB"), ("🇺🇳", "UN"),
+]
+
+EMOJI_CATEGORIES = {
+    "Money": [
+        "💰", "💵", "💴", "💶", "💷", "💸", "💳", "🏦", "🪙", "💎", "📈", "📉", "🏧", "🤑",
+    ],
+    "Goals": [
+        "🎯", "🏆", "🥇", "⭐", "🌟", "✨", "🔥", "🚀", "💪", "👑", "🎓", "🎉", "🏅", "📌",
+    ],
+    "Alerts": [
+        "🚨", "⚠️", "🔔", "🔕", "📢", "📣", "🆘", "❗", "❓", "‼️", "⁉️", "🛑",
+        "🚩", "🏁", "✅", "❌", "⭕", "🔴", "🟢", "🟡", "🔵", "🟠", "🟣", "⚡",
+    ],
+    "Globe": [
+        "🌍", "🌎", "🌏", "🗺️", "🧭", "🌐",
+    ],
+    "Travel": [
+        "✈️", "🏖️", "🏔️", "🌴", "🧳", "🚗", "🛳️", "🏕️", "🎢", "🌅",
+        "🗼", "🗽", "🏰", "⛩️", "🕌", "🛕", "🗻", "🏝️", "🚂", "🚁",
+    ],
+    "Home": [
+        "🏠", "🏡", "🔑", "🛋️", "🏗️", "🧱", "🪴", "🛏️", "🚿", "💡", "🏢", "🪟",
+    ],
+    "Health": [
+        "❤️", "🩺", "💊", "🏃", "🧘", "🍎", "🥗", "💉", "🦷", "👶", "🐾", "🧬",
+    ],
+    "Tech": [
+        "💻", "📱", "🎮", "🖥️", "⌚", "📷", "🎧", "🕹️", "🤖", "📡", "🔋", "💿",
+    ],
+    "Fun": [
+        "🎵", "🎨", "📚", "🎬", "🎸", "🎪", "🎲", "🧩", "🎭", "🎹", "📖", "🎤",
+    ],
+    "Food": [
+        "☕", "🍕", "🍔", "🍣", "🍰", "🍷", "🥂", "🍻", "🧁", "🥑", "🌮", "🍜",
+    ],
+    "Nature": [
+        "🌻", "🌈", "☀️", "🌙", "⛅", "🌊", "🦋", "🐝", "🌸", "🍀", "🌵", "🦜",
+    ],
+}
+
+# Flag categories stored separately (tuples with country codes for Twemoji rendering)
+FLAG_CATEGORIES = {
+    "Flags Asia": _FLAG_ASIA,
+    "Flags Europe": _FLAG_EUROPE,
+    "Flags Americas": _FLAG_AMERICAS,
+    "Flags Other": _FLAG_OTHER,
+}
+
+# Twemoji CDN base — converts unicode codepoints to PNG URLs
+_TWEMOJI_BASE = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72"
+
+
+def _emoji_to_twemoji_url(emoji_char):
+    """Convert a unicode emoji to a Twemoji CDN image URL."""
+    codepoints = []
+    for char in emoji_char:
+        cp = ord(char)
+        if cp == 0xFE0F:
+            continue  # skip variation selector
+        codepoints.append(f"{cp:x}")
+    return f"{_TWEMOJI_BASE}/{'-'.join(codepoints)}.png"
+
+
+def _render_twemoji(emoji_char, size=24):
+    """Return an <img> tag that renders the emoji via Twemoji."""
+    url = _emoji_to_twemoji_url(emoji_char)
+    return (
+        f'<img src="{url}" alt="{emoji_char}" '
+        f'style="width:{size}px;height:{size}px;vertical-align:middle">'
+    )
+
+
+def _emoji_picker(key_prefix, default="💰"):
+    """Render a Teams-style emoji picker grid. Returns the selected emoji."""
+    session_key = f"{key_prefix}_selected_emoji"
+    if session_key not in st.session_state:
+        st.session_state[session_key] = default
+
+    current = st.session_state[session_key]
+    # Use Twemoji for the large preview so flags render on Windows
+    preview_img = _render_twemoji(current, size=48)
+    st.markdown(
+        f'<div style="text-align:center;padding:8px 0">{preview_img}</div>',
+        unsafe_allow_html=True,
+    )
+
+    # CSS to make emoji buttons bigger and centered
+    st.markdown(
+        """<style>
+        div[data-testid="stExpander"] button[kind="secondary"] {
+            min-height: 48px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 2px;
+        }
+        </style>""",
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("Pick an emoji"):
+        all_cat_names = list(EMOJI_CATEGORIES.keys()) + list(FLAG_CATEGORIES.keys())
+        selected_cat = st.selectbox(
+            "Category",
+            all_cat_names,
+            key=f"{key_prefix}_emoji_cat",
+            label_visibility="collapsed",
+        )
+
+        num_cols = 6
+
+        if selected_cat in FLAG_CATEGORIES:
+            # Render flags as Twemoji image buttons via HTML grid + real buttons
+            flags = FLAG_CATEGORIES[selected_cat]
+            for row_start in range(0, len(flags), num_cols):
+                row_flags = flags[row_start:row_start + num_cols]
+                cols = st.columns(num_cols)
+                for j, col in enumerate(cols):
+                    idx = row_start + j
+                    if idx < len(flags):
+                        emoji_char, label = flags[idx]
+                        img = _render_twemoji(emoji_char, size=24)
+                        with col:
+                            if st.button(
+                                label,
+                                key=f"{key_prefix}_{selected_cat}_{idx}",
+                                use_container_width=True,
+                                help=f"{img}",
+                            ):
+                                st.session_state[session_key] = emoji_char
+                                st.rerun()
+                # Show flag images above the buttons for reference
+                imgs_html = ""
+                for j, (emoji_char, label) in enumerate(row_flags):
+                    img = _render_twemoji(emoji_char, size=30)
+                    cell_width = f"{100 / num_cols:.1f}%"
+                    imgs_html += (
+                        f'<div style="width:{cell_width};text-align:center;display:inline-block">'
+                        f'{img}</div>'
+                    )
+                st.markdown(imgs_html, unsafe_allow_html=True)
+        else:
+            # Regular emoji — render as normal buttons
+            emojis = EMOJI_CATEGORIES[selected_cat]
+            for row_start in range(0, len(emojis), num_cols):
+                cols = st.columns(num_cols)
+                for j, col in enumerate(cols):
+                    idx = row_start + j
+                    if idx < len(emojis):
+                        with col:
+                            if st.button(
+                                emojis[idx],
+                                key=f"{key_prefix}_{selected_cat}_{idx}",
+                                use_container_width=True,
+                            ):
+                                st.session_state[session_key] = emojis[idx]
+                                st.rerun()
+
+    return st.session_state[session_key]
+
 
 def render(savings_goals):
+    # Inject Twemoji auto-parse so flag emojis render as images on Windows
+    st.markdown(
+        '<script src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/twemoji.min.js"'
+        ' crossorigin="anonymous"></script>'
+        '<script>document.addEventListener("DOMContentLoaded",function(){twemoji.parse(document.body,{size:"72x72"})});</script>',
+        unsafe_allow_html=True,
+    )
     st.title("💰 Savings Goals")
 
     all_goals = savings_goals.get_all_goals()
@@ -36,7 +242,7 @@ def render(savings_goals):
             st.info("No savings goals yet! Create one in the 'Add New Goal' tab.")
         else:
             for goal in sorted(all_goals, key=lambda x: x['progress_pct'], reverse=True):
-                icon = '✅' if goal['status'] == 'completed' else '📊'
+                icon = '✅' if goal['status'] == 'completed' else goal.get('emoji', '💰')
                 with st.expander(f"{icon} {goal['name']} - {goal['progress_pct']:.1f}%", expanded=(goal['status'] != 'completed')):
                     col1, col2 = st.columns([2, 1])
 
@@ -100,15 +306,28 @@ def render(savings_goals):
 
                     if st.session_state.get(f'editing_{goal["goal_id"]}', False):
                         st.write("**Edit Goal**")
-                        new_target = st.number_input("Target Amount", value=float(goal['target_amount']), key=f"edit_target_{goal['goal_id']}")
-                        new_date = st.date_input("Target Date", value=datetime.strptime(goal['target_date'], '%Y-%m-%d'), key=f"edit_date_{goal['goal_id']}")
+                        edit_key = f"edit_goal_{goal['goal_id']}"
+                        edit_emoji_col, edit_form_col = st.columns([1, 3])
+                        with edit_emoji_col:
+                            new_emoji = _emoji_picker(
+                                edit_key,
+                                default=goal.get('emoji', '💰'),
+                            )
+                        with edit_form_col:
+                            new_target = st.number_input("Target Amount", value=float(goal['target_amount']), key=f"edit_target_{goal['goal_id']}")
+                            new_date = st.date_input("Target Date", value=datetime.strptime(goal['target_date'], '%Y-%m-%d'), key=f"edit_date_{goal['goal_id']}")
 
                         if st.button("Save Changes", key=f"save_{goal['goal_id']}"):
+                            # Read the emoji from session state directly
+                            saved_emoji = st.session_state.get(f"{edit_key}_selected_emoji", new_emoji)
                             savings_goals.update_goal(
                                 goal['goal_id'],
                                 target_amount=new_target,
-                                target_date=new_date.strftime('%Y-%m-%d')
+                                target_date=new_date.strftime('%Y-%m-%d'),
+                                emoji=saved_emoji,
                             )
+                            # Clean up session state
+                            st.session_state.pop(f"{edit_key}_selected_emoji", None)
                             st.session_state[f'editing_{goal["goal_id"]}'] = False
                             st.success("Goal updated!")
                             st.rerun()
@@ -133,6 +352,11 @@ def render(savings_goals):
     with tab2:
         st.subheader("Create New Savings Goal")
 
+        st.markdown("**Goal Icon**")
+        selected_emoji = _emoji_picker("new_goal")
+
+        st.divider()
+
         col1, col2 = st.columns(2)
 
         with col1:
@@ -154,10 +378,12 @@ def render(savings_goals):
 
         if st.button("Create Goal", type="primary"):
             if goal_name:
+                # Read emoji from session state in case it was picked then form submitted
+                final_emoji = st.session_state.get("new_goal_selected_emoji", selected_emoji)
                 goal_id = savings_goals.add_goal(
                     goal_name, target_amount, target_date.strftime('%Y-%m-%d'),
                     category, current_amount, priority, notes,
-                    interest_rate / 100
+                    interest_rate / 100, emoji=final_emoji
                 )
                 st.success(f"✓ Created goal: {goal_name}")
                 summary = savings_goals.get_goal_summary(goal_id)

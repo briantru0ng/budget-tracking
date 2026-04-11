@@ -62,22 +62,36 @@ def save_budgets(budgets):
         json.dump(budgets, f, indent=2)
 
 
-# Sidebar navigation
-st.sidebar.title("💰 Budget Tracker")
-page = st.sidebar.radio(
-    "Navigate",
-    [
-        "📊 Live View",
-        "🗂️ Sort Transactions",
-        "💰 Savings Goals",
-        "📤 Upload Documents",
-        "💳 Loan Tracker",
-        "📝 All Transactions",
-        "🔄 Recurring",
-        "📈 Trends",
-        "⚙️ Settings & Tools",
-    ]
+# Sidebar navigation — grouped with sub-items indented via ideographic spaces
+st.sidebar.markdown(
+    """<style>
+    /* Make indented sub-items slightly smaller / muted */
+    div[data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child + div {
+        font-size: 0.95rem;
+    }
+    </style>""",
+    unsafe_allow_html=True,
 )
+st.sidebar.title("💰 Budget Tracker")
+
+# Build grouped navigation with visual hierarchy
+NAV_ITEMS = [
+    "📊 Live View",
+    "　　📈 Trends",
+    "📝 All Transactions",
+    "　　🗂️ Sort Transactions",
+    "　　🔄 Recurring",
+    "💰 Savings Goals",
+    "💳 Loan Tracker",
+    "📤 Upload Documents",
+    "⚙️ Settings & Tools",
+]
+
+# Map indented labels back to clean names for routing
+LABEL_MAP = {item: item.lstrip("　") for item in NAV_ITEMS}
+
+page_raw = st.sidebar.radio("Navigate", NAV_ITEMS, label_visibility="collapsed")
+page = LABEL_MAP[page_raw]
 
 # Route to page modules
 if page == "📊 Live View":
@@ -109,10 +123,10 @@ elif page == "⚙️ Settings & Tools":
 
 # Sidebar footer
 st.sidebar.divider()
-st.sidebar.info(
-    "💡 **Quick Tips**\n\n"
-    "• Upload statements in Upload tab\n"
-    "• Set savings goals\n"
-    "• Track loan payoff\n"
-    "• Monitor spending trends"
-)
+st.sidebar.info("""💡 **Quick Tips**
+
+• Upload statements in Upload tab
+• Set savings goals
+• Track loan payoff
+• Monitor spending trends""")
+
